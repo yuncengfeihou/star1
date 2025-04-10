@@ -26,12 +26,12 @@ async function handleFillButtonClick() {
 
         // 检查是否正在生成或保存，避免冲突
         if (is_send_press || is_group_generating) {
-            console.error(`[${PLUGIN_NAME}] 错误: 正在生成回复，无法创建新聊天`);
+            console.error(`[${PLUGIN_NAME}] 错误: 正在生成回复，无法创建预览聊天`);
             toastr.warning('正在生成回复，请稍后再试');
             return;
         }
         if (isChatSaving) {
-            console.error(`[${PLUGIN_NAME}] 错误: 聊天正在保存，无法创建新聊天`);
+            console.error(`[${PLUGIN_NAME}] 错误: 聊天正在保存，无法创建预览聊天`);
             toastr.warning('聊天正在保存，请稍后再试');
             return;
         }
@@ -69,7 +69,7 @@ async function handleFillButtonClick() {
         console.log(`[${PLUGIN_NAME}] 找到 ${validMessages.length} 条有效消息可以复制`);
         
         // 创建新聊天并切换到新聊天
-        console.log(`[${PLUGIN_NAME}] 正在创建新聊天...`);
+        console.log(`[${PLUGIN_NAME}] 正在创建预览聊天...`);
         await doNewChat({ deleteCurrentChat: false });
         console.log(`[${PLUGIN_NAME}] 新聊天已创建，准备填充消息`);
         
