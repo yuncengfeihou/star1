@@ -43,15 +43,23 @@ async function handleFillButtonClick() {
         console.log(`[${PLUGIN_NAME}] 当前聊天总消息数: ${originalChat.length}`);
         
         // 定义要提取的消息ID
-        const messagesToCopy = [0, 2, 3]; // 根据需求指定为0, 2, 3
+        const messagesToCopy = [0, 2, 3]; // 根据需求指定为1, 3, 7
         
-        // 检查这些消息是否存在并记录
+        // 检查这些消息是否存在并记录，保留原始mesid
         const validMessages = [];
         for (const mesId of messagesToCopy) {
             if (mesId < originalChat.length) {
                 // 创建消息的深拷贝，避免引用原始对象
                 const messageCopy = JSON.parse(JSON.stringify(originalChat[mesId]));
-                validMessages.push(messageCopy);
+                
+                // 记录原始的mesid，便于调试
+                messageCopy.original_mesid = mesId;
+                
+                validMessages.push({
+                    message: messageCopy,
+                    mesid: mesId
+                });
+                
                 console.log(`[${PLUGIN_NAME}] 已找到消息 ID ${mesId}: ${originalChat[mesId].mes.substring(0, 30)}...`);
             } else {
                 console.warn(`[${PLUGIN_NAME}] 警告: 消息 ID ${mesId} 不存在，原聊天只有 ${originalChat.length} 条消息`);
@@ -78,36 +86,62 @@ async function handleFillButtonClick() {
         // 确保获取最新的聊天上下文
         const newContext = getContext();
         
+        // 将validMessages按照mesid从小到大排序，确保消息按正确顺序添加
+        validMessages.sort((a, b) => a.mesid - b.mesid);
+        
         // 将提取的消息添加到新聊天
         console.log(`[${PLUGIN_NAME}] 开始填充消息到新聊天，消息数量: ${validMessages.length}`);
-        for (let i = 0; i < validMessages.length; i++) {
-            try {
-                const message = validMessages[i];
-                
-                // 确保消息有唯一的ID
-                message.id = Date.now() + i;
-                
-                console.log(`[${PLUGIN_NAME}] 正在添加消息 ${i+1}/${validMessages.length}: ${message.mes.substring(0, 30)}...`);
-                await newContext.addOneMessage(message, { 
-                    scroll: true,
-                    forceId: message.id  // 强制使用我们设置的ID
-                });
-                
-                // 在消息之间添加短暂延迟，确保顺序正确
-                await new Promise(resolve => setTimeout(resolve, 100));
-                
-                console.log(`[${PLUGIN_NAME}] 消息 ${i+1}/${validMessages.length} 添加成功`);
-            } catch (error) {
-                console.error(`[${PLUGIN_NAME}] 添加消息时出错:`, error);
+        
+        // 首先创建一个空的chat数组，长度等于最大mesid+1
+        const maxMesid = Math.max(...validMessages.map(item => item.mesid));
+        const newChat = new Array(maxMesid + 1).fill(null);
+        
+        // 将消息放入对应的位置
+        for (const item of validMessages) {
+            newChat[item.mesid] = item.message;
+        }
+        
+        // 填充实际消息到界面
+        let addedCount = 0;
+        for (let i = 0; i < newChat.length; i++) {
+            if (newChat[i] !== null) {
+                try {
+                    const message = newChat[i];
+                    
+                    console.log(`[${PLUGIN_NAME}] 正在添加消息 mesid=${i}: ${message.mes.substring(0, 30)}...`);
+                    
+                    // 使用forceId设置为原始的mesid
+                    await newContext.addOneMessage(message, { 
+                        scroll: true,
+                        forceId: i
+                    });
+                    
+                    // 在消息之间添加短暂延迟，确保顺序正确
+                    await new Promise(resolve => setTimeout(resolve, 100));
+                    
+                    console.log(`[${PLUGIN_NAME}] 消息 mesid=${i} 添加成功`);
+                    addedCount++;
+                    
+                } catch (error) {
+                    console.error(`[${PLUGIN_NAME}] 添加消息时出错:`, error);
+                }
             }
         }
         
         // 检查添加后的消息数量是否正确
         const finalChat = newContext.chat;
-        console.log(`[${PLUGIN_NAME}] 填充完成后聊天消息数量: ${finalChat.length}，应为 ${validMessages.length}`);
+        console.log(`[${PLUGIN_NAME}] 填充完成后聊天消息数量: ${finalChat.length}，应为 ${addedCount}`);
         
-        if (finalChat.length !== validMessages.length) {
-            console.warn(`[${PLUGIN_NAME}] 警告: 最终消息数量 ${finalChat.length} 与预期的 ${validMessages.length} 不符!`);
+        if (finalChat.length !== addedCount) {
+            console.warn(`[${PLUGIN_NAME}] 警告: 最终消息数量 ${finalChat.length} 与预期的 ${addedCount} 不符!`);
+        }
+        
+        // 检查最终mesid是否正确
+        console.log(`[${PLUGIN_NAME}] 检查最终消息的mesid:`);
+        for (let i = 0; i < finalChat.length; i++) {
+            const message = finalChat[i];
+            const mesid = $(`#chat .mes[mesid="${i}"]`).length > 0 ? i : "未找到";
+            console.log(`[${PLUGIN_NAME}] 消息[${i}]: ${message.mes.substring(0, 30)}... mesid=${mesid}`);
         }
         
         // 保存新聊天
@@ -116,7 +150,7 @@ async function handleFillButtonClick() {
         console.log(`[${PLUGIN_NAME}] 新聊天已保存`);
         
         // 显示成功消息
-        toastr.success(`已创建新聊天并填充了 ${validMessages.length} 条消息`);
+        toastr.success(`已创建新聊天并填充了 ${addedCount} 条消息，保留原始mesid`);
         
     } catch (error) {
         console.error(`[${PLUGIN_NAME}] 执行过程中发生错误:`, error);
