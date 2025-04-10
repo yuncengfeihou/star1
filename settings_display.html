@@ -1,0 +1,25 @@
+<div class="inline-drawer">
+    <div class="inline-drawer-toggle inline-drawer-header">
+        <b>消息复制与新聊天创建</b>
+        <div class="inline-drawer-icon fa-solid fa-circle-chevron-down down"></div>
+    </div>
+    <div class="inline-drawer-content" style="padding: 10px;">
+        <div class="star1_plugin_container">
+            <p>点击"填充"按钮将从当前聊天中提取特定消息(mesid为1,3,7)并创建一个新的聊天。</p>
+            <p>操作流程:</p>
+            <ol>
+                <li>获取当前聊天中的指定消息</li>
+                <li>创建一个新聊天并自动切换</li>
+                <li>将获取的消息填充到新聊天中</li>
+            </ol>
+            <div style="margin-top: 15px;">
+                <button id="star1_fill_button" class="menu_button">
+                    <i class="fa-solid fa-copy" style="margin-right: 5px;"></i>填充
+                </button>
+            </div>
+            <div class="star1_note" style="margin-top: 10px; font-size: 0.8em; color: #888;">
+                注: 请确保当前聊天已选择角色/群组，并且聊天中至少有8条消息才能正常提取mesid为7的消息。
+            </div>
+        </div>
+    </div>
+</div>
