@@ -1,0 +1,10 @@
+{
+    "display_name": "复制消息插件",
+    "loading_order": 10,
+    "requires": [],
+    "optional": [],
+    "js": "index.js",
+    "author": "你的名字",
+    "version": "1.0.0",
+    "homePage": ""
+}
