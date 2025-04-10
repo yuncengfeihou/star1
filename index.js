@@ -5,6 +5,7 @@ import { doNewChat, is_send_press, isChatSaving } from "../../../../script.js";
 import { this_chid } from "../../../../script.js";
 import { selected_group } from "../../../group-chats.js";
 import { is_group_generating } from "../../../group-chats.js";
+import { clearChat } from "../../../../script.js"; // 添加导入clearChat函数
 
 // 插件名称
 const PLUGIN_NAME = 'star1';
@@ -42,13 +43,15 @@ async function handleFillButtonClick() {
         console.log(`[${PLUGIN_NAME}] 当前聊天总消息数: ${originalChat.length}`);
         
         // 定义要提取的消息ID
-        const messagesToCopy = [0,2, 3]; // 根据需求指定为0, 2, 3
+        const messagesToCopy = [0, 2, 3]; // 根据需求指定为0, 2, 3
         
         // 检查这些消息是否存在并记录
         const validMessages = [];
         for (const mesId of messagesToCopy) {
             if (mesId < originalChat.length) {
-                validMessages.push(originalChat[mesId]);
+                // 创建消息的深拷贝，避免引用原始对象
+                const messageCopy = JSON.parse(JSON.stringify(originalChat[mesId]));
+                validMessages.push(messageCopy);
                 console.log(`[${PLUGIN_NAME}] 已找到消息 ID ${mesId}: ${originalChat[mesId].mes.substring(0, 30)}...`);
             } else {
                 console.warn(`[${PLUGIN_NAME}] 警告: 消息 ID ${mesId} 不存在，原聊天只有 ${originalChat.length} 条消息`);
@@ -65,21 +68,51 @@ async function handleFillButtonClick() {
         // 延迟一下确保新聊天加载完成
         await new Promise(resolve => setTimeout(resolve, 500));
         
+        // 清空新聊天中可能存在的默认消息
+        console.log(`[${PLUGIN_NAME}] 清空新聊天中的默认消息`);
+        clearChat();
+        
+        // 再次延迟，确保清空操作完成
+        await new Promise(resolve => setTimeout(resolve, 300));
+        
+        // 确保获取最新的聊天上下文
+        const newContext = getContext();
+        
         // 将提取的消息添加到新聊天
-        console.log(`[${PLUGIN_NAME}] 开始填充消息到新聊天`);
-        for (const message of validMessages) {
+        console.log(`[${PLUGIN_NAME}] 开始填充消息到新聊天，消息数量: ${validMessages.length}`);
+        for (let i = 0; i < validMessages.length; i++) {
             try {
-                console.log(`[${PLUGIN_NAME}] 正在添加消息: ${message.mes.substring(0, 30)}...`);
-                await context.addOneMessage(message, { scroll: true });
-                console.log(`[${PLUGIN_NAME}] 消息添加成功`);
+                const message = validMessages[i];
+                
+                // 确保消息有唯一的ID
+                message.id = Date.now() + i;
+                
+                console.log(`[${PLUGIN_NAME}] 正在添加消息 ${i+1}/${validMessages.length}: ${message.mes.substring(0, 30)}...`);
+                await newContext.addOneMessage(message, { 
+                    scroll: true,
+                    forceId: message.id  // 强制使用我们设置的ID
+                });
+                
+                // 在消息之间添加短暂延迟，确保顺序正确
+                await new Promise(resolve => setTimeout(resolve, 100));
+                
+                console.log(`[${PLUGIN_NAME}] 消息 ${i+1}/${validMessages.length} 添加成功`);
             } catch (error) {
                 console.error(`[${PLUGIN_NAME}] 添加消息时出错:`, error);
             }
         }
         
+        // 检查添加后的消息数量是否正确
+        const finalChat = newContext.chat;
+        console.log(`[${PLUGIN_NAME}] 填充完成后聊天消息数量: ${finalChat.length}，应为 ${validMessages.length}`);
+        
+        if (finalChat.length !== validMessages.length) {
+            console.warn(`[${PLUGIN_NAME}] 警告: 最终消息数量 ${finalChat.length} 与预期的 ${validMessages.length} 不符!`);
+        }
+        
         // 保存新聊天
         console.log(`[${PLUGIN_NAME}] 正在保存新聊天...`);
-        await context.saveChat();
+        await newContext.saveChat();
         console.log(`[${PLUGIN_NAME}] 新聊天已保存`);
         
         // 显示成功消息
@@ -112,4 +145,4 @@ jQuery(async () => {
     } catch (error) {
         console.error(`[${PLUGIN_NAME}] 初始化时出错:`, error);
     }
-});
+}); 
